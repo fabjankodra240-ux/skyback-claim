@@ -40,17 +40,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // newest first
   const ids = (await kv.zrange("leads:index", 0, 999, { rev: true })) as string[];
-  const items = await Promise.all(
-    ids.map((id) => kv.hgetall<Record<string, unknown>>(id))
-  );
 
-  const csv = toCSV(items.filter(Boolean));
+  // hgetall can return null, so fetch then narrow
+  type Lead = Record<string, unknown>;
+  const raw = await Promise.all(ids.map((id) => kv.hgetall<Lead>(id)));
+  const items: Lead[] = raw.filter((r): r is Lead => r !== null); // <-- type-safe filter
+
+  const csv = toCSV(items);
   return new Response(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename=leads.csv`,
+      "content-disposition": "attachment; filename=leads.csv",
       "cache-control": "no-store",
     },
   });
 }
+
