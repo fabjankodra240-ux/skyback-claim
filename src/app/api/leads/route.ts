@@ -17,12 +17,13 @@ export async function GET(req: NextRequest) {
   }
 
   // newest first (replace zrevrange with zrange + { rev: true })
-  const ids = await kv.zrange<string>("leads:index", 0, 199, { rev: true });
+  const ids = await kv.zrange("leads:index", 0, 199, { rev: true });
 
   // fetch each lead hash
-  const items = await Promise.all(
-    ids.map((id) => kv.hgetall<Record<string, unknown>>(id))
-  );
+ const items = await Promise.all(
+  ids.map((id) => kv.hgetall<Record<string, unknown>>(id))
+);
+return NextResponse.json({ items });
 
   return NextResponse.json({ items });
 }
