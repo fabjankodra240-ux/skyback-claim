@@ -9,7 +9,7 @@ function isAuthed(req: NextRequest) {
   return token && token === process.env.ADMIN_TOKEN;
 }
 
-// GET /api/leads  -> returns latest leads as JSON
+// GET /api/leads -> returns latest leads as JSON
 export async function GET(req: NextRequest) {
   if (!isAuthed(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
