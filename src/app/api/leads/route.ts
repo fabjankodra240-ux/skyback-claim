@@ -1,26 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
+// src/app/api/leads/route.ts
 import { kv } from "@vercel/kv";
+import { NextRequest, NextResponse } from "next/server";
 
-// Allow auth via ?token=... or Authorization: Bearer <token>
+// allow ?token=... or Authorization: Bearer <token>
 function isAuthed(req: NextRequest) {
-  const fromQuery = req.nextUrl.searchParams.get("token");
-  const fromHeader = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  const token = fromQuery || fromHeader;
-  return token && token === process.env.ADMIN_TOKEN;
+  const urlToken = req.nextUrl.searchParams.get("token") ?? undefined;
+  const headerToken =
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? undefined;
+  const token = urlToken ?? headerToken;
+  return token === process.env.ADMIN_TOKEN;
 }
 
-// GET /api/leads -> returns latest leads as JSON
 export async function GET(req: NextRequest) {
   if (!isAuthed(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Most recent 200 leads
-  const ids = await kv.zrevrange<string[]>("leads:index", 0, 199);
+  // newest first (replace zrevrange with zrange + { rev: true })
+  const ids = await kv.zrange<string>("leads:index", 0, 199, { rev: true });
 
-  // Fetch each lead hash
+  // fetch each lead hash
   const items = await Promise.all(
-    ids.map((id) => kv.hgetall<Record<string, any>>(id))
+    ids.map((id) => kv.hgetall<Record<string, unknown>>(id))
   );
 
   return NextResponse.json({ items });
