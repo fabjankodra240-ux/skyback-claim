@@ -1,13 +1,11 @@
-// src/app/api/leads/route.ts
-import { kv } from "@vercel/kv";
 import { NextRequest, NextResponse } from "next/server";
+import { kv } from "@vercel/kv";
 
-// allow ?token=... or Authorization: Bearer <token>
+// simple admin check: /api/leads?token=...  or  Authorization: Bearer ...
 function isAuthed(req: NextRequest) {
-  const urlToken = req.nextUrl.searchParams.get("token") ?? undefined;
-  const headerToken =
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? undefined;
-  const token = urlToken ?? headerToken;
+  const token =
+    req.nextUrl.searchParams.get("token") ??
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   return token === process.env.ADMIN_TOKEN;
 }
 
@@ -16,14 +14,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // newest first (replace zrevrange with zrange + { rev: true })
-  const ids = await kv.zrange("leads:index", 0, 199, { rev: true });
+  // 👇 tell TS these are strings
+  const ids = (await kv.zrange("leads:index", 0, 199, { rev: true })) as string[];
 
-  // fetch each lead hash
- const items = await Promise.all(
-  ids.map((id) => kv.hgetall<Record<string, unknown>>(id))
-);
-return NextResponse.json({ items });
+  // 👇 now id is a string, so this type-checks
+  const items = await Promise.all(
+    ids.map((id) => kv.hgetall<Record<string, unknown>>(id))
+  );
 
   return NextResponse.json({ items });
 }
