@@ -432,14 +432,50 @@ function ClaimForm() {
   });
   const [submitted, setSubmitted] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!state.consent) {
-      alert("Please accept terms and privacy.");
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  if (!state.consent) {
+    alert("Please accept terms and privacy.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // use the SAME keys your API expects
+        fullName: state.fullName,    // <-- capital N
+        email: state.email,
+
+        // optional extras (match whatever you want to store)
+        phone: state.phone || "",
+        airline: state.airline || "",
+        pnr: state.pnr || "",
+        origin: state.origin || "",
+        destination: state.destination || "",
+        delayhours: (state as any).delayhours ?? "", // only if you actually have it in state
+        cause: (state as any).cause ?? "",
+        note: state.message || "",
+        consent: !!state.consent,
+      }),
+    });
+
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({}));
+      alert(`Error saving your claim. ${error ?? res.statusText}`);
       return;
     }
+
     setSubmitted(true);
-  };
+    // (optional) reset fields:
+    // setState({ fullName: "", email: "", phone: "", airline: "", pnr: "", origin: "", destination: "", message: "", consent: false });
+  } catch (err: any) {
+    alert(`Error saving your claim. ${err?.message ?? err}`);
+  }
+};
+
 
   if (submitted) {
     return (
